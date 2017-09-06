@@ -46,7 +46,7 @@ function sessWrite($session_id, $session_data)
 //系统会自动传入要删除的sessionid
 function sessDelete($session_id)
 {
-    echo "<p>delete session:{$session_id}";
+    echo "<p>删除了session:{$session_id}";
 }
 //自定义回收
 //系统会自动传入最大的超时时间
