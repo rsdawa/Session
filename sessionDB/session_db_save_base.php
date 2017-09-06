@@ -9,13 +9,11 @@ sess_data text comment 'session数据',
 sess_time int comment '时间，用int类型存储为时间戳'
 )charset utf8;
  */
-//自定义session回收
+//自定义session回收机制
 
-//随着新访问的回收概率1/2
-ini_set("session.gc_probability", 1);
+ini_set("session.gc_probability", 1); //随着新访问的回收概率1/2
 ini_set("session.gc_divisor", 2);
-//超过20秒即超时回收
-ini_set("session.gc_maxlifetime", 20);
+ini_set("session.gc_maxlifetime", 20); //超过20秒即超时回收
 /*
 session自定义存储
 该函数一次性设定6个函数名，分别代表session运行时要做的6个事情：
@@ -25,6 +23,10 @@ session自定义存储
 ini_set("session.save_handler", "user");
 
 session_set_save_handler("sessBegin", "sessEnd", "sessRead", "sessWrite", "sessDelete", "sessGc");
+
+$dsn = "mysql:host=localhost;port=3306;dbname=php39";
+$opt = array(PDO::MYSQL_ATTR_INIT_COMMAND => "set names utf8");
+$pdo = new pdo($dsn, "root", "root", $opt);
 
 function sessBegin()
 {
@@ -38,14 +40,14 @@ function sessEnd()
 function sessRead($session_id) //系统会自动传入要读取的sessionid
 
 {
-    echo "<p>读取session数据库内容</p>";
-    $dsn = "mysql:host=localhost;port=3306;dbname=php39";
-    $opt = array(PDO::MYSQL_ATTR_INIT_COMMAND => "set names utf8");
-    $pdo = new pdo($dsn, "root", "root", $opt);
+    echo "<p>读取sessionID=[$session_id]的数据库内容</p>";
+    // $dsn = "mysql:host=localhost;port=3306;dbname=php39";
+    // $opt = array(PDO::MYSQL_ATTR_INIT_COMMAND => "set names utf8");
+    // $pdo = new pdo($dsn, "root", "root", $opt);
 
     $data   = "";
     $sql    = "select sess_data from session where sess_id='$session_id'";
-    $result = $pdo->query($sql); //pdo的结果集
+    $result = $GLOBALS['pdo']->query($sql); //pdo的结果集
     if ($result) {
         $data = $result->fetchColumn();
     }
@@ -56,6 +58,7 @@ function sessRead($session_id) //系统会自动传入要读取的sessionid
 function sessWrite($session_id, $session_data)
 {
     echo "<p>将session内容写入数据库</p>";
+    //写session动作在当前程序结束后，所以不能用$GLOBALS全局变量
     $dsn = "mysql:host=localhost;port=3306;dbname=php39";
     $opt = array(PDO::MYSQL_ATTR_INIT_COMMAND => "set names utf8");
     $pdo = new pdo($dsn, "root", "root", $opt);
@@ -68,11 +71,16 @@ function sessWrite($session_id, $session_data)
 //系统会自动传入要删除的sessionid
 function sessDelete($session_id)
 {
-    echo "<p>删除了session:{$session_id}";
+    echo "<p>删除了session:{$session_id}</p>";
+    $sql = "delete from session where sess_id='$session_id'";
+    $GLOBALS['pdo']->exec($sql);
 }
 //自定义回收
 //系统会自动传入最大的超时时间
+//$maxlifetime其实就是php.ini中的session.gc_lifemaxtime
 function sessGc($maxlifetime)
 {
     echo "<p style='color:red'>session进行了一次回收。</p>";
+    $sql    = "delete from session where now()-sess_time>$maxlifetime";
+    $result = $GLOBALS['pdo']->exec($sql);
 }
